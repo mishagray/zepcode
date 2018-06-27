@@ -4,6 +4,7 @@ import colorTemplate from './templates/color';
 import linearGradientTemplate from './templates/linear-gradient';
 import radialGradientTemplate from './templates/radial-gradient';
 import fontExtensionTemplate from './templates/font-extension';
+import textStyleTemplate from './templates/text-styles';
 import headerTemplate from './templates/header';
 import shadowTemplate from './templates/shadow';
 import customShadowTemplate from './templates/custom-shadow';
@@ -23,16 +24,17 @@ const zepcode = (() => {
           useLayerShadowExtension: privateContext.getOption(
             'use_layer_shadow_extension'
           ),
+          generateTextStyles: privateContext.getOption('generate_textstyles'),
         },
         project: privateContext.project,
       };
     }
 
-    me.colorString = (color, postfix) => {
+    me.colorString = (color, prefix, postfix) => {
       const styleguideColor = me.project.findColorEqual(color);
 
       if (me.options.useColorNames && styleguideColor) {
-        return `UIColor.${styleguideColor.name}${postfix}`;
+        return `${prefix}.${styleguideColor.name}${postfix}`;
       }
       if (me.options.useCustomColorInitializer) {
         return customColorTemplate(color) + postfix;
@@ -40,7 +42,7 @@ const zepcode = (() => {
       return colorTemplate(color) + postfix;
     };
 
-    me.cgColorString = color => me.colorString(color, `.cgColor`);
+    me.cgColorString = color => me.colorString(color, 'UIColor', '.cgColor');
 
     me.colorStopsString = gradient => {
       const { colorStops } = gradient;
@@ -87,9 +89,32 @@ const zepcode = (() => {
       };
     };
 
+    me.generateTextStyleExtension = textStyles => {
+      if (me.options.generateTextStyles) {
+        const coloredStyles = textStyles.map(style => {
+          const colorString = me.colorString(style.color, '', '');
+          return Object.assign({ colorString }, style);
+        });
+        const sortedStyles = coloredStyles.sort((a, b) => {
+          if (a.fontSize !== b.fontSize) {
+            return b.fontSize - a.fontSize;
+          }
+          return a.name.localeCompare(b.name);
+        });
+
+        const code = textStyleTemplate(sortedStyles);
+        return {
+          code,
+          language: 'swift',
+          filename: 'TextStyle.swift',
+        };
+      }
+      return undefined;
+    };
+
     me.shadow = shadow => {
       if (me.options.useLayerShadowExtension) {
-        const colorString = me.colorString(shadow.color, ``);
+        const colorString = me.colorString(shadow.color, '', '');
         return customShadowTemplate(shadow, colorString);
       }
       const colorString = me.cgColorString(shadow.color);

@@ -5,7 +5,13 @@ function styleguideColors(context, colors) {
 }
 
 function styleguideTextStyles(context, textStyles) {
-  return zepcode(context).generateFontExtension(textStyles);
+  const zepInstance = zepcode(context);
+  const fonts = zepInstance.generateFontExtension(textStyles);
+  if (zepInstance.options.generateTextStyles) {
+    const styles = zepInstance.generateTextStyleExtension(textStyles);
+    return `${fonts.code}\n\n${styles.code}`;
+  }
+  return fonts.code;
 }
 
 function layer(context, layerParams) {

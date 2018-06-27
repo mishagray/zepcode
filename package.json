@@ -73,6 +73,12 @@
         "type": "switch",
         "id": "use_layer_shadow_extension",
         "default": false
+      },
+      {
+        "name": "Generate TextStyle enumerations",
+        "type": "switch",
+        "id": "generate_textstyles",
+        "default": false
       }
     ]
   }
