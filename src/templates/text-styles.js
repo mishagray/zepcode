@@ -1,9 +1,9 @@
-import camelizeFilter from '../filters';
+import { camelizeFilter, camelizeLeadingLowerFilter } from '../filters';
 import colorTemplate from './color';
 
 const styleTextAlignment = style => {
   if (style.textAlign === undefined) {
-    return ".left";
+    return "nil";
   }
   switch(style.textAlign.toLowerCase()) {
     case "left":
@@ -19,7 +19,7 @@ const styleTextAlignment = style => {
       return ".justified";
       break;
     default:
-      return ".left";
+      return "nil";
   }
 }
 
@@ -27,41 +27,79 @@ const styleLineHeight = style => {
   return style.lineHeight || "nil";
 }
 const styleLetterSpacing = style => {
-  return style.letterSpacing || 1;
+  if (style.letterSpacing === undefined) {
+    return "nil";
+  }
+  return style.letterSpacing;
 }
 
 const styleColor = style => {
   return style.colorString || colorTemplate(style.color);
 }
 
-const textStyleTemplate = textStyles => `import UIKit
+const styleComment = style => {
+  // return `/* ${JSON.stringify(style, null,2)} */`;
+  return ``;
+}
 
-struct TextStyle {
-  let font: UIFont
-  let lineHeight: CGFloat?
-  let textAlign: NSTextAlignment
-  let letterSpacing: CGFloat
-  let color: UIColor
 
+const textStyleTemplate = textStyles => `
+import UIKit
+
+#if !swift(>=4.2)
+extension NSAttributedString {
+    public typealias Key = NSAttributedStringKey
+}
+#endif
+
+public struct TextStyle {
+    public let font: UIFont
+    public let color: UIColor
+    public let lineHeight: CGFloat?
+    public let alignment: NSTextAlignment?
+    public let kern: CGFloat?
+
+    public var attributes: [NSAttributedString.Key : Any] {
+      var attribs: [NSAttributedString.Key : Any] =
+          [.font: self.font,
+           .foregroundColor : self.color]
+
+      if let kern = self.kern {
+          attribs[.kern] = NSNumber(value: kern.native)
+      }
+
+      if self.alignment != nil || self.lineHeight != nil {
+          let paragraphStyle = NSMutableParagraphStyle()
+
+          if let alignment = self.alignment {
+              paragraphStyle.alignment = alignment
+          }
+          if let lineHeight = self.lineHeight {
+              paragraphStyle.minimumLineHeight = lineHeight
+              paragraphStyle.maximumLineHeight = lineHeight
+          }
+          attribs[.paragraphStyle] = paragraphStyle
+      }
+      return attribs
+    }
+
+    func attributedString(for string: String) -> NSAttributedString {
+      return NSAttributedString(string: string, attributes: self.attributes)
+    }
+
+}
+
+extension TextStyle {
   ${textStyles.map(style => `
-
-    /* ${JSON.stringify(style,null,2)} */
-
-  static var ${camelizeFilter(style.name)}: TextStyle = {
-    return TextStyle(font: .${camelizeFilter(style.fontFace)}(ofSize: ${style.fontSize}),
-                     lineHeight: ${styleLineHeight(style)},
-                     textAlign: ${styleTextAlignment(style)},
-                     letterSpacing: ${styleLetterSpacing(style)},
-                     color: ${style.colorString})
-      }`
-  ).join('\n')}
-
-  var attributes: [NSAttributedString.Key : Any] {
-
-    var attribs = [NSAttributedString.Key : Any]();
-    
-  }
-
+    ${styleComment(style)}
+    public static var ${camelizeLeadingLowerFilter(style.name)}: TextStyle = {
+      return TextStyle(font: .${camelizeFilter(style.fontFace)}(ofSize: ${style.fontSize}),
+                       color: ${style.colorString},
+                       lineHeight: ${styleLineHeight(style)},
+                       alignment: ${styleTextAlignment(style)},
+                       kern: ${styleLetterSpacing(style)})
+    }()`
+  ).join('')}
 }`;
 
 export default textStyleTemplate;

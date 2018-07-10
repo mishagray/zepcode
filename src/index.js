@@ -87,7 +87,13 @@ function exportStyleguideColors(context, colors) {
 }
 
 function exportStyleguideTextStyles(context, textStyles) {
-  return zepcode(context).generateFontExtension(textStyles);
+  const zepInstance = zepcode(context);
+  const fonts = zepInstance.generateFontExtension(textStyles);
+  if (zepInstance.options.generateTextStyles) {
+    const styles = zepInstance.generateTextStyleExtension(textStyles);
+    return [fonts, styles];
+  }
+  return fonts;
 }
 
 export default {
